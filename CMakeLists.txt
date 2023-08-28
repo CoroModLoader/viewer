@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.12)
-project(extractor LANGUAGES CXX VERSION 1.0)
+project(viewer LANGUAGES CXX VERSION 1.0)
 
 # --------------------------------------------------------------------------------------------------------
 # Setup library
@@ -21,17 +21,14 @@ endif()
 
 target_include_directories(${PROJECT_NAME} PUBLIC  "include")
 target_include_directories(${PROJECT_NAME} PRIVATE "private")
+target_include_directories(${PROJECT_NAME} PRIVATE "interface")
 
 # --------------------------------------------------------------------------------------------------------
 # Setup sources
 # --------------------------------------------------------------------------------------------------------
 
-target_sources(${PROJECT_NAME} PRIVATE
-  "src/main.cpp"
-  "src/logger.cpp"
-  "src/archive.cpp"
-  "src/archive.impl.cpp"
-)
+file(GLOB src "src/*.cpp")
+target_sources(${PROJECT_NAME} PRIVATE ${src})
 
 # --------------------------------------------------------------------------------------------------------
 # Setup required libraries
@@ -45,4 +42,35 @@ CPMAddPackage(
   GIT_REPOSITORY "https://github.com/gabime/spdlog"
 )
 
-target_link_libraries(${PROJECT_NAME} PUBLIC spdlog::spdlog)
+CPMAddPackage(
+  NAME           reproc
+  VERSION        14.2.4
+  GIT_REPOSITORY "https://github.com/DaanDeMeyer/reproc"
+  OPTIONS        "REPROC++ ON"
+)
+
+CPMAddPackage(
+  NAME           nlohmann_json
+  VERSION        3.11.2
+  GIT_REPOSITORY "https://github.com/nlohmann/json"
+)
+
+CPMAddPackage(
+  NAME           fmt
+  GIT_TAG        10.1.0
+  GIT_REPOSITORY "https://github.com/fmtlib/fmt"
+)
+
+CPMAddPackage(
+  NAME           saucer
+  GIT_TAG        very-experimental
+  GIT_REPOSITORY "https://github.com/saucer/saucer"
+)
+
+CPMAddPackage(
+  NAME           nfd
+  VERSION        1.1.0
+  GIT_REPOSITORY "https://github.com/btzy/nativefiledialog-extended"
+)
+
+target_link_libraries(${PROJECT_NAME} PUBLIC spdlog::spdlog fmt::fmt nfd saucer reproc++ nlohmann_json)
