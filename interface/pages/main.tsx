@@ -2,7 +2,8 @@ import { Alert, Button, Divider, Flex, Modal, NavLink, ScrollArea, Stack, Tabs, 
 import { useDebouncedValue, useDisclosure, useViewportSize } from "@mantine/hooks";
 import { Prism } from "@mantine/prism";
 import { IconEye, IconFileImport, IconHourglassEmpty, IconSearch, IconSettings, IconX } from "@tabler/icons-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import Marquee from "react-fast-marquee";
 import { Virtuoso } from "react-virtuoso";
 import { Settings } from "../components/settings";
 import create_root from "../src/react";
@@ -65,12 +66,21 @@ function Viewer()
                     itemContent={index =>
                     {
                         const file = filtered[index];
+                        const long = file.length > 50;
+                        const active = selected === file;
 
-                        return <NavLink
-                            label={file}
-                            active={selected === file}
-                            onClick={() => set_selected(file)}
-                        />;
+                        const Wrapping = active && long ? Marquee : Fragment;
+
+                        return <Wrapping
+                            pauseOnHover
+                            play={selected === file}
+                        >
+                            <NavLink
+                                label={file}
+                                active={active}
+                                onClick={() => set_selected(file)}
+                            />
+                        </Wrapping>;
                     }}
                 />
             </ScrollArea>
