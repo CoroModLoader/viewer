@@ -14,26 +14,26 @@ jobs:
         language: ["cpp"]
 
     steps:
-      - name: Checkout
+      - name: 📦 Checkout
         uses: actions/checkout@v3
 
-      - name: Install build dependencies
+      - name: ⬇️ Install build dependencies
         run: "pacman --noconfirm -Syu base-devel cmake gcc git make qt5-base qt5-webchannel qt5-webengine yarn gtk3 && aur-install saucer-cli-git"
 
-      - name: Build Frontend
+      - name: 🖼️ Build Frontend
         run: >
           cd interface 
           && yarn 
           && yarn build 
           && saucer embed dist
 
-      - name: Compile
+      - name: 🛠️ Compile
         run: >
           mkdir build && cd build
           && cmake .. 
           && cmake --build . --config Release
 
-      - name: Upload Artifact
+      - name: 🆙 Upload Artifact
         uses: actions/upload-artifact@v3
         with:
           name: solar2d-viewer.linux
@@ -48,29 +48,32 @@ jobs:
         language: ["cpp"]
 
     steps:
-      - name: Checkout
+      - name: 📦 Checkout
         uses: actions/checkout@v3
 
-      - name: Set up Node
+      - name: 🏗️ Setup Node
         uses: actions/setup-node@v3
 
-      - name: Build Frontend
+      - name: ⬇️ Install build dependencies
         run: >
           yarn global add saucer-app
           && echo "$(yarn global bin)" >> $GITHUB_PATH
-          && cd interface 
+
+      - name: 🖼️ Build Frontend
+        run: >
+          cd interface 
           && rm yarn.lock
           && yarn 
           && yarn build 
           && saucer embed dist
 
-      - name: Compile
+      - name: 🛠️ Compile
         run: >
           mkdir build && cd build
           && cmake .. 
           && cmake --build . --config Release
 
-      - name: Upload Artifact
+      - name: 🆙 Upload Artifact
         uses: actions/upload-artifact@v3
         with:
           name: solar2d-viewer.windows
