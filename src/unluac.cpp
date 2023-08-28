@@ -70,7 +70,7 @@ namespace viewer
         logger::get()->info("config path: {}", config.string());
 
         m_impl->java_path = "java";
-        m_impl->unluac_path = fs::current_path() / "unluac.jar";
+        m_impl->unluac_path = (fs::current_path() / "unluac.jar").string();
 
         if (!fs::exists(config) || !fs::is_regular_file(config))
         {
