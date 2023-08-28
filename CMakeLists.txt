@@ -13,6 +13,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 20 CXX_EXTENSIONS 
 
 if (UNIX AND CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic -Werror -pedantic -pedantic-errors -Wfatal-errors)
+    target_compile_options(${PROJECT_NAME} PRIVATE -Wno-missing-field-initializers)
 endif()
 
 # --------------------------------------------------------------------------------------------------------
