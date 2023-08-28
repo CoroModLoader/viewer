@@ -56,8 +56,7 @@ jobs:
 
       - name: ⬇️ Install build dependencies
         run: >
-          yarn global add saucer-app
-          && echo "$(yarn global bin)" >> $GITHUB_PATH
+          npm install -g saucer-app
 
       - name: 🖼️ Build Frontend
         run: >
