@@ -1,0 +1,77 @@
+on:
+  workflow_dispatch:
+  push:
+    branches: ["**"]
+
+name: Build
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    container: archlinux
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ["cpp"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install build dependencies
+        run: "pacman --noconfirm -Syu base-devel cmake gcc git make qt5-base qt5-webchannel qt5-webengine yarn saucer-cli-git"
+
+      - name: Build Frontend
+        run: >
+          cd interface 
+          && yarn 
+          && yarn build 
+          && saucer embed dist
+
+      - name: Compile
+        run: >
+          mkdir build && cd build
+          && cmake .. 
+          && cmake --build . --config Release
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: solar2d-viewer.linux
+          path: |
+            build/
+
+  build-windows:
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ["cpp"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up Node
+        uses: actions/setup-node@v3
+
+      - name: Build Frontend
+        run: >
+          yarn global add saucer-app
+          && echo "$(yarn global bin)" >> $GITHUB_PATH
+          && cd interface 
+          && yarn 
+          && yarn build 
+          && saucer embed dist
+
+      - name: Compile
+        run: >
+          mkdir build && cd build
+          && cmake .. 
+          && cmake --build . --config Release
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: solar2d-viewer.windows
+          path: |
+            build/
