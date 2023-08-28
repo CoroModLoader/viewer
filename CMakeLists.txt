@@ -44,7 +44,7 @@ CPMAddPackage(
 
 CPMAddPackage(
   NAME           reproc
-  VERSION        14.2.4
+  GIT_TAG        1c07bdbec3f2ecba7125b9499b9a8a77bf9aa8c7
   GIT_REPOSITORY "https://github.com/DaanDeMeyer/reproc"
   OPTIONS        "REPROC++ ON"
 )
