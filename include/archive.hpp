@@ -44,6 +44,7 @@ namespace solar2d
 
       public:
         [[nodiscard]] std::vector<file> files() const;
+        [[nodiscard]] std::optional<file> get(const std::string &name) const;
 
       public:
         std::vector<char> data(const file &file);
@@ -51,8 +52,5 @@ namespace solar2d
 
       public:
         static std::optional<archive> from(const fs::path &path);
-
-      public:
-        static constexpr auto version = 0x1;
     };
 } // namespace solar2d

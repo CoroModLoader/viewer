@@ -8,10 +8,14 @@ namespace solar2d
     struct archive::impl
     {
         std::ifstream file;
+        std::ifstream::pos_type start;
 
       public:
         template <typename T = std::uint32_t>
         T read();
+
+      public:
+        static constexpr auto version = 0x1;
     };
 
     enum class tag : unsigned int

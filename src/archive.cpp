@@ -9,22 +9,18 @@
 
 namespace solar2d
 {
+    using viewer::logger;
+
     archive::archive() : m_impl(std::make_unique<impl>()) {}
 
-    archive::~archive()
-    {
-        if (!m_impl)
-        {
-            return;
-        }
-
-        m_impl->file.close();
-    }
+    archive::~archive() = default;
 
     archive::archive(archive &&other) noexcept : m_impl(std::move(other.m_impl)) {}
 
     std::vector<file> archive::files() const
     {
+        m_impl->file.seekg(m_impl->start);
+
         auto tag = m_impl->read<enum tag>();
 
         if (tag != tag::content)
@@ -34,7 +30,8 @@ namespace solar2d
 
         auto count = m_impl->read();
 
-        std::vector<file> rtn(count);
+        std::vector<file> rtn;
+        rtn.reserve(count);
 
         for (auto i = 0u; count > i; i++)
         {
@@ -48,6 +45,19 @@ namespace solar2d
         }
 
         return rtn;
+    }
+
+    std::optional<file> archive::get(const std::string &name) const
+    {
+        auto files = this->files();
+        auto it = std::ranges::find_if(files, [&](auto &x) { return x.name == name; });
+
+        if (it == files.end())
+        {
+            return std::nullopt;
+        }
+
+        return *it;
     }
 
     std::vector<char> archive::data(const file &file)
@@ -66,20 +76,14 @@ namespace solar2d
 
     void archive::extract(const file &file, const fs::path &dest)
     {
-        using explorer::logger;
+        auto folder = !dest.has_filename();
 
-        if (!fs::exists(dest))
+        if ((folder && !fs::exists(dest)) || (!folder && !fs::exists(dest.parent_path())))
         {
-            fs::create_directories(dest);
+            fs::create_directories(folder ? dest : dest.parent_path());
         }
 
-        if (!fs::is_directory(dest))
-        {
-            logger::get()->error("'{}' is not a directory", dest.string());
-            return;
-        }
-
-        auto output_path = dest / file.name;
+        auto output_path = folder ? dest / file.name : dest;
         std::ofstream output(output_path);
 
         auto buf = data(file);
@@ -92,15 +96,13 @@ namespace solar2d
 
     std::optional<archive> archive::from(const fs::path &path)
     {
-        using explorer::logger;
-
         if (!fs::exists(path) || !fs::is_regular_file(path))
         {
             logger::get()->error("'{}' does not exist or is not a file", path.string());
             return std::nullopt;
         }
 
-        static constexpr std::uint8_t header[] = {'r', 'a', 'c', version};
+        static constexpr std::uint8_t header[] = {'r', 'a', 'c', impl::version};
         static constexpr auto header_size = sizeof(header);
 
         std::ifstream file{path, std::ios::binary};
@@ -116,6 +118,8 @@ namespace solar2d
         }
 
         archive rtn;
+
+        rtn.m_impl->start = file.tellg();
         rtn.m_impl->file = std::move(file);
 
         return rtn;
