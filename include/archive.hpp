@@ -9,7 +9,7 @@ namespace solar2d
 {
     namespace fs = std::filesystem;
 
-    enum class type
+    enum class resource_type
     {
         lua_resource
     };
@@ -19,8 +19,8 @@ namespace solar2d
         friend class archive;
 
       public:
-        enum type type;
         std::string name;
+        resource_type type;
 
       private:
         std::size_t offset;
@@ -47,8 +47,8 @@ namespace solar2d
         [[nodiscard]] std::optional<file> get(const std::string &name) const;
 
       public:
-        std::vector<std::uint8_t> data(const file &file);
         void extract(const file &file, const fs::path &dest);
+        [[nodiscard]] std::vector<char> data(const file &file);
 
       public:
         static std::optional<archive> from(const fs::path &path);

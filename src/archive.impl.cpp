@@ -9,14 +9,14 @@ namespace solar2d
     }
 
     template <>
-    std::vector<uint8_t> archive::impl::read<std::vector<std::uint8_t>>()
+    std::vector<char> archive::impl::read<std::vector<char>>()
     {
         const auto len = read();
         const auto pos = file.tellg();
 
-        std::vector<std::uint8_t> rtn(len);
+        std::vector<char> rtn(len);
 
-        file.read(reinterpret_cast<char *>(rtn.data()), len);
+        file.read(rtn.data(), len);
         file.seekg(pos + byte_aligned<4>(len));
 
         return rtn;

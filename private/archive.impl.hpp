@@ -29,7 +29,7 @@ namespace solar2d
     };
 
     template <>
-    std::vector<std::uint8_t> archive::impl::read<std::vector<std::uint8_t>>();
+    std::vector<char> archive::impl::read<std::vector<char>>();
 
     template <>
     std::uint32_t archive::impl::read<std::uint32_t>();

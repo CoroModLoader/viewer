@@ -37,7 +37,7 @@ namespace solar2d
         {
             file entry;
 
-            entry.type = static_cast<type>(m_impl->read());
+            entry.type = static_cast<resource_type>(m_impl->read());
             entry.offset = m_impl->read();
             entry.name = m_impl->read<std::string>();
 
@@ -60,20 +60,6 @@ namespace solar2d
         return *it;
     }
 
-    std::vector<std::uint8_t> archive::data(const file &file)
-    {
-        m_impl->file.seekg(static_cast<std::streamoff>(file.offset));
-
-        auto tag = m_impl->read<enum tag>();
-
-        if (tag != tag::data)
-        {
-            return {};
-        }
-
-        return m_impl->read<std::vector<std::uint8_t>>();
-    }
-
     void archive::extract(const file &file, const fs::path &dest)
     {
         auto folder = !dest.has_filename();
@@ -88,10 +74,24 @@ namespace solar2d
 
         auto buf = data(file);
 
-        output.write(reinterpret_cast<char *>(buf.data()), static_cast<std::streamsize>(buf.size()));
+        output.write(buf.data(), static_cast<std::streamsize>(buf.size()));
         output.close();
 
         logger::get()->debug("Extracted '{}' to '{}'", file.name, output_path.string());
+    }
+
+    std::vector<char> archive::data(const file &file)
+    {
+        m_impl->file.seekg(static_cast<std::streamoff>(file.offset));
+
+        auto tag = m_impl->read<enum tag>();
+
+        if (tag != tag::data)
+        {
+            return {};
+        }
+
+        return m_impl->read<std::vector<char>>();
     }
 
     std::optional<archive> archive::from(const fs::path &path)
