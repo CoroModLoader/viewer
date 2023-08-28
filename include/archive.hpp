@@ -19,7 +19,7 @@ namespace solar2d
         friend class archive;
 
       public:
-        type type;
+        enum type type;
         std::string name;
 
       private:
