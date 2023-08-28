@@ -2,7 +2,7 @@
 #include <memory>
 #include <spdlog/spdlog.h>
 
-namespace explorer
+namespace viewer
 {
     class logger
     {
@@ -23,4 +23,4 @@ namespace explorer
       public:
         static logger &get();
     };
-} // namespace explorer
+} // namespace viewer
