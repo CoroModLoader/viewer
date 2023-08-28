@@ -59,6 +59,7 @@ jobs:
           yarn global add saucer-app
           && echo "$(yarn global bin)" >> $GITHUB_PATH
           && cd interface 
+          && rm yarn.lock
           && yarn 
           && yarn build 
           && saucer embed dist
