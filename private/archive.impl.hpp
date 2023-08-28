@@ -2,6 +2,7 @@
 #include "archive.hpp"
 
 #include <fstream>
+#include <cstdint>
 
 namespace solar2d
 {
@@ -28,7 +29,7 @@ namespace solar2d
     };
 
     template <>
-    std::vector<char> archive::impl::read<std::vector<char>>();
+    std::vector<std::uint8_t> archive::impl::read<std::vector<std::uint8_t>>();
 
     template <>
     std::uint32_t archive::impl::read<std::uint32_t>();

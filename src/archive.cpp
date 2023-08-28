@@ -60,7 +60,7 @@ namespace solar2d
         return *it;
     }
 
-    std::vector<char> archive::data(const file &file)
+    std::vector<std::uint8_t> archive::data(const file &file)
     {
         m_impl->file.seekg(static_cast<std::streamoff>(file.offset));
 
@@ -71,7 +71,7 @@ namespace solar2d
             return {};
         }
 
-        return m_impl->read<std::vector<char>>();
+        return m_impl->read<std::vector<std::uint8_t>>();
     }
 
     void archive::extract(const file &file, const fs::path &dest)
@@ -84,11 +84,11 @@ namespace solar2d
         }
 
         auto output_path = folder ? dest / file.name : dest;
-        std::ofstream output(output_path);
+        std::ofstream output(output_path, std::ios::out | std::ios::binary);
 
         auto buf = data(file);
 
-        output.write(buf.data(), static_cast<std::streamsize>(buf.size()));
+        output.write(reinterpret_cast<char *>(buf.data()), static_cast<std::streamsize>(buf.size()));
         output.close();
 
         logger::get()->debug("Extracted '{}' to '{}'", file.name, output_path.string());

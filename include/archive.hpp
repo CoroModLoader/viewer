@@ -47,7 +47,7 @@ namespace solar2d
         [[nodiscard]] std::optional<file> get(const std::string &name) const;
 
       public:
-        std::vector<char> data(const file &file);
+        std::vector<std::uint8_t> data(const file &file);
         void extract(const file &file, const fs::path &dest);
 
       public:
