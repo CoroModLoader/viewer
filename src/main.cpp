@@ -2,6 +2,7 @@
 #include "unluac.hpp"
 #include "archive.hpp"
 
+#include <map>
 #include <nfd.hpp>
 #include <filesystem>
 #include <saucer/smartview.hpp>
@@ -47,6 +48,7 @@ int main()
     saucer.set_min_size(800, 600);
 
     std::optional<solar2d::archive> archive;
+    std::map<std::string, std::string> cache;
 
     saucer.expose("open-archive", [&]() {
         nfdchar_t *path{};
@@ -82,6 +84,11 @@ int main()
     });
 
     saucer.expose("decompile", [&](const std::string &file) -> std::optional<std::string> {
+        if (cache.contains(file))
+        {
+            return cache.at(file);
+        }
+
         auto temp = std::filesystem::temp_directory_path() / "solar2d-dec.lua";
         auto target = archive->get(file);
 
@@ -98,6 +105,8 @@ int main()
         {
             return std::nullopt;
         }
+
+        cache.emplace(file, rtn.value());
 
         return rtn.value();
     });
