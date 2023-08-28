@@ -2,20 +2,28 @@ import { Alert, Button, Divider, Flex, Modal, NavLink, ScrollArea, Stack, Tabs, 
 import { useDebouncedValue, useDisclosure, useViewportSize } from "@mantine/hooks";
 import { Prism } from "@mantine/prism";
 import { IconEye, IconFileImport, IconHourglassEmpty, IconSearch, IconSettings, IconX } from "@tabler/icons-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Virtuoso } from "react-virtuoso";
 import { Settings } from "../components/settings";
 import create_root from "../src/react";
 
 function Viewer()
 {
-    const [code, set_code] = useState<string | null | undefined>(undefined);
     const [files, set_files] = useState<string[]>([]);
+    const [code, set_code] = useState<string | undefined>(undefined);
+
+    const [selected, set_selected] = useState<string | undefined>(undefined);
 
     const [search, set_search] = useState<string>("");
     const [debounced_search] = useDebouncedValue(search, 500);
-    const [selected, set_selected] = useState<string | undefined>(undefined);
 
-    const filtered = useMemo(() => files.filter(file => file.toLowerCase().includes(search)), [files, debounced_search]);
+    const filtered = useMemo(() =>
+    {
+        const query = search.toLowerCase();
+        const filter = (file: string) => file.toLowerCase().includes(query);
+
+        return files.filter(filter);
+    }, [files, debounced_search]);
 
     useEffect(() =>
     {
@@ -34,11 +42,12 @@ function Viewer()
             return;
         }
 
-        window.saucer.call<string | null>("decompile", [selected]).then(set_code);
+        window.saucer.call<string>("decompile", [selected]).then(set_code);
     }, [selected]);
 
-    const height = useViewportSize().height - 60;
     const width = useViewportSize().width - 365;
+    const height = useViewportSize().height - 45;
+    const viewport = useRef<HTMLDivElement>(null);
 
     return <Flex h={height}>
         <Stack p="xs">
@@ -48,19 +57,26 @@ function Viewer()
                 icon={<IconSearch size="1rem" />}
                 onChange={e => set_search(e.currentTarget.value)}
             />
-            <ScrollArea w={350}>
-                {filtered.map(file =>
-                    <NavLink
-                        key={file}
-                        label={file}
-                        active={selected === file}
-                        onClick={() => set_selected(file)}
-                    />
-                )}
+
+            <ScrollArea h={height} w={350} viewportRef={viewport}>
+                <Virtuoso
+                    totalCount={filtered.length}
+                    customScrollParent={viewport.current ?? undefined}
+                    itemContent={index =>
+                    {
+                        const file = filtered[index];
+
+                        return <NavLink
+                            label={file}
+                            active={selected === file}
+                            onClick={() => set_selected(file)}
+                        />;
+                    }}
+                />
             </ScrollArea>
         </Stack>
         <Divider h="100%" orientation="vertical" />
-        <ScrollArea w={width} h={height - 30} p="xs">
+        <ScrollArea w={width} h={height - 15} p="xs">
             {code === null &&
                 <Alert title="Sorry!" color="red" icon={<IconX size="1rem" />}>
                     Failed to decompile! See the log for more details.
@@ -72,7 +88,7 @@ function Viewer()
                 </Alert>
             }
             {!!code &&
-                <Prism withLineNumbers language="ocaml" w={width - 15}>
+                <Prism withLineNumbers language="ocaml" w={width - 40}>
                     {code}
                 </Prism>
             }
