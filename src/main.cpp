@@ -169,6 +169,7 @@ int main()
             }
 
             auto out_dir = fs::path(path.get());
+            auto &unluac = unluac::get();
             auto extracted = 0u;
 
             for (const auto &file : files)
@@ -179,7 +180,7 @@ int main()
                                                          saucer::make_args(extracted, files.size())));
                 }
 
-                auto lua = unluac::get().decompile(temp / file.name);
+                auto lua = unluac.decompile(temp / file.name);
 
                 if (!lua)
                 {
