@@ -14,7 +14,15 @@ Modding Framework for Coromon
 
 # Introduction
 
-This repository hosts the source code for the car-archive viewer, which can be used to decompile a solar2d games' lua files
+A tool to decompile Solar2D resource files.
+
+# Screenshot
+
+![screenshot](assets/screenshot.png)
+
+# Requirements
+
+* [unluac](https://sourceforge.net/projects/unluac/files/Unstable/)
 
 # Building
 
@@ -24,11 +32,12 @@ This repository hosts the source code for the car-archive viewer, which can be u
   ```bash
   cd interface
   yarn && yarn build
-  saucer embed dist
     ```
+
 * Compile
   ```bash
   mkdir build && cd build
   cmake .. && cmake --build . --config Release   
   ```
+
 * Done!
