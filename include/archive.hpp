@@ -40,6 +40,7 @@ namespace solar2d
         ~archive();
 
       public:
+        archive(const archive &);
         archive(archive &&) noexcept;
 
       public:

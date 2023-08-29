@@ -17,6 +17,16 @@ namespace solar2d
 
     archive::archive(archive &&other) noexcept : m_impl(std::move(other.m_impl)) {}
 
+    archive::archive(const archive &other) : m_impl(std::make_unique<impl>())
+    {
+        m_impl->file = std::ifstream{other.m_impl->location, std::ios::binary};
+        m_impl->file.unsetf(std::ios::skipws);
+        m_impl->file.seekg(other.m_impl->start);
+
+        m_impl->location = other.m_impl->location;
+        m_impl->start = other.m_impl->start;
+    }
+
     std::vector<file> archive::files() const
     {
         m_impl->file.seekg(m_impl->start);
@@ -62,7 +72,7 @@ namespace solar2d
 
     void archive::extract(const file &file, const fs::path &dest)
     {
-        auto folder = !dest.has_filename();
+        auto folder = !dest.has_extension();
 
         if ((folder && !fs::exists(dest)) || (!folder && !fs::exists(dest.parent_path())))
         {
@@ -119,6 +129,7 @@ namespace solar2d
 
         archive rtn;
 
+        rtn.m_impl->location = path;
         rtn.m_impl->start = file.tellg();
         rtn.m_impl->file = std::move(file);
 

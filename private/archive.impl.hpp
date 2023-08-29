@@ -12,6 +12,9 @@ namespace solar2d
         std::ifstream::pos_type start;
 
       public:
+        fs::path location;
+
+      public:
         template <typename T = std::uint32_t>
         T read();
 
