@@ -1,12 +1,13 @@
 import { Alert, Button, Divider, Flex, Modal, NavLink, ScrollArea, Stack, Tabs, TextInput } from "@mantine/core";
 import { useDebouncedValue, useDisclosure, useViewportSize } from "@mantine/hooks";
 import { Prism } from "@mantine/prism";
-import { IconEye, IconFileImport, IconHourglassEmpty, IconSearch, IconSettings, IconX } from "@tabler/icons-react";
+import { IconEye, IconFileExport, IconFileImport, IconHourglassEmpty, IconSearch, IconSettings, IconX } from "@tabler/icons-react";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import Marquee from "react-fast-marquee";
 import { Virtuoso } from "react-virtuoso";
 import { Settings } from "../components/settings";
 import create_root from "../src/react";
+import { notifications } from "@mantine/notifications";
 
 function Viewer()
 {
@@ -34,6 +35,23 @@ function Viewer()
         }
 
         window.saucer.call<string[]>("list-files", []).then(set_files);
+
+        window.update_notification = (val: number, limit: number) =>
+        {
+            if (val === limit)
+            {
+                notifications.hide("export");
+                return;
+            }
+
+            notifications.update({ loading        : true,
+                autoClose      : false,
+                withCloseButton: false,
+                id             : "export",
+                title          : "Exporting Files",
+                message        : `${val}/${limit} files processed`,
+            });
+        };
     }, []);
 
     useEffect(() =>
@@ -45,6 +63,20 @@ function Viewer()
 
         window.saucer.call<string>("decompile", [selected]).then(set_code);
     }, [selected]);
+
+    const export_all = () =>
+    {
+        notifications.show({
+            loading        : true,
+            autoClose      : false,
+            withCloseButton: false,
+            id             : "export",
+            title          : "Exporting Files",
+            message        : "0/? files processed",
+        });
+
+        window.saucer.call("export-all", []);
+    };
 
     const width = useViewportSize().width - 365;
     const height = useViewportSize().height - 45;
@@ -58,8 +90,7 @@ function Viewer()
                 icon={<IconSearch size="1rem" />}
                 onChange={e => set_search(e.currentTarget.value)}
             />
-
-            <ScrollArea h={height} w={350} viewportRef={viewport}>
+            <ScrollArea h={height - 40} w={350} viewportRef={viewport}>
                 <Virtuoso
                     totalCount={filtered.length}
                     customScrollParent={viewport.current ?? undefined}
@@ -84,6 +115,9 @@ function Viewer()
                     }}
                 />
             </ScrollArea>
+            <Button leftIcon={<IconFileExport size="1rem" />} fullWidth onClick={export_all}>
+                Export All
+            </Button>
         </Stack>
         <Divider h="100%" orientation="vertical" />
         <ScrollArea w={width} h={height - 15} p="xs">

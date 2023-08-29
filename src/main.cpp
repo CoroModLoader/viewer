@@ -140,6 +140,51 @@ int main()
         return path;
     });
 
+    saucer.expose(
+        "export-all",
+        [&]() {
+            NFD::UniquePath path;
+            auto result = NFD::PickFolder(path);
+
+            if (result != NFD_OKAY)
+            {
+                return;
+            }
+
+            auto temp = fs::temp_directory_path() / "solar2d-export";
+            auto copy = archive.value();
+
+            auto files = copy.files();
+
+            for (const auto &file : files)
+            {
+                copy.extract(file, temp);
+            }
+
+            auto out_dir = fs::path(path.get());
+            auto extracted = 0u;
+
+            for (const auto &file : files)
+            {
+                if (extracted % 10 == 0 || extracted == files.size())
+                {
+                    saucer::forget(saucer.evaluate<void>("window.update_notification({})",
+                                                         saucer::make_args(extracted, files.size())));
+                }
+
+                auto lua = unluac::get().decompile(temp / file.name);
+
+                if (!lua)
+                {
+                    continue;
+                }
+
+                std::ofstream out{out_dir / (file.name + ".lua"), std::ios::out};
+                out << lua.value();
+                extracted++;
+            }
+        },
+        true);
     saucer.embed(embedded::get_all_files());
     saucer.set_context_menu(false);
     saucer.serve("index.html");
