@@ -72,6 +72,7 @@ CPMAddPackage(
   NAME           nfd
   VERSION        1.1.0
   GIT_REPOSITORY "https://github.com/btzy/nativefiledialog-extended"
+  OPTIONS        "NFD_PORTAL ON"
 )
 
 target_link_libraries(${PROJECT_NAME} PUBLIC spdlog::spdlog fmt::fmt nfd saucer reproc++ nlohmann_json)
