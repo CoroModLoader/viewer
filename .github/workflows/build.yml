@@ -18,14 +18,13 @@ jobs:
         uses: actions/checkout@v3
 
       - name: ⬇️ Install build dependencies
-        run: "pacman --noconfirm -Syu base-devel cmake gcc git make qt5-base qt5-webchannel qt5-webengine yarn gtk3 && aur-install saucer-cli-git"
+        run: "pacman --noconfirm -Syu base-devel cmake gcc git make qt5-base qt5-webchannel qt5-webengine yarn gtk3"
 
       - name: 🖼️ Build Frontend
         run: >
           cd interface 
           && yarn 
-          && yarn build 
-          && saucer embed dist
+          && yarn build
 
       - name: 🛠️ Compile
         run: >
@@ -54,17 +53,12 @@ jobs:
       - name: 🏗️ Setup Node
         uses: actions/setup-node@v3
 
-      - name: ⬇️ Install build dependencies
-        run: >
-          npm install -g saucer-app
-
       - name: 🖼️ Build Frontend
         run: >
           cd interface 
           && rm yarn.lock
           && yarn 
-          && yarn build 
-          && saucer embed dist
+          && yarn build
 
       - name: 🛠️ Compile
         run: >
