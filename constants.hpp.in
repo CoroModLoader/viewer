@@ -1,0 +1,8 @@
+#pragma once
+
+#include <string_view>
+
+namespace viewer
+{
+    static constexpr inline std::string_view version = "${PROJECT_VERSION}";
+} // namespace viewer

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.12)
-project(viewer LANGUAGES CXX VERSION 1.0)
+project(viewer LANGUAGES CXX VERSION 2.0.0)
 
 # --------------------------------------------------------------------------------------------------------
 # Setup library
@@ -17,7 +17,13 @@ if (UNIX AND CMAKE_BUILD_TYPE STREQUAL "Debug")
 endif()
 
 # --------------------------------------------------------------------------------------------------------
-# Setup includes
+# Generate "constants" file
+# --------------------------------------------------------------------------------------------------------
+
+configure_file("constants.hpp.in" "${CMAKE_CURRENT_SOURCE_DIR}/private/constants.hpp")
+
+# --------------------------------------------------------------------------------------------------------
+# Include directories
 # --------------------------------------------------------------------------------------------------------
 
 target_include_directories(${PROJECT_NAME} PUBLIC  "include")
@@ -38,9 +44,34 @@ target_sources(${PROJECT_NAME} PRIVATE ${src})
 include("cmake/cpm.cmake")
 
 CPMAddPackage(
+  NAME           fmt
+  GIT_TAG        10.2.1
+  GIT_REPOSITORY "https://github.com/fmtlib/fmt"
+)
+
+CPMAddPackage(
   NAME           spdlog
   VERSION        1.12.0
   GIT_REPOSITORY "https://github.com/gabime/spdlog"
+  OPTIONS        "SPDLOG_FMT_EXTERNAL ON"
+)
+
+CPMFindPackage(
+  NAME           tl-expected
+  VERSION        1.1.0
+  GIT_REPOSITORY "https://github.com/TartanLlama/expected"
+)
+
+CPMFindPackage(
+  NAME           glaze
+  VERSION        2.0.6
+  GIT_REPOSITORY "https://github.com/stephenberry/glaze"
+)
+
+CPMAddPackage(
+  NAME           saucer
+  VERSION        2.2.0
+  GIT_REPOSITORY "https://github.com/saucer/saucer"
 )
 
 CPMAddPackage(
@@ -51,28 +82,10 @@ CPMAddPackage(
 )
 
 CPMAddPackage(
-  NAME           nlohmann_json
-  VERSION        3.11.2
-  GIT_REPOSITORY "https://github.com/nlohmann/json"
-)
-
-CPMAddPackage(
-  NAME           fmt
-  GIT_TAG        10.1.0
-  GIT_REPOSITORY "https://github.com/fmtlib/fmt"
-)
-
-CPMAddPackage(
-  NAME           saucer
-  GIT_TAG        very-experimental
-  GIT_REPOSITORY "https://github.com/saucer/saucer"
-)
-
-CPMAddPackage(
   NAME           nfd
-  VERSION        1.1.0
+  VERSION        1.1.1
   GIT_REPOSITORY "https://github.com/btzy/nativefiledialog-extended"
   OPTIONS        "NFD_PORTAL ON"
 )
 
-target_link_libraries(${PROJECT_NAME} PUBLIC spdlog::spdlog fmt::fmt nfd saucer reproc++ nlohmann_json)
+target_link_libraries(${PROJECT_NAME} PUBLIC spdlog::spdlog fmt::fmt saucer::saucer tl::expected glaze::glaze reproc++ nfd)
