@@ -1,13 +1,22 @@
 #pragma once
+
 #include <vector>
 #include <string>
 #include <memory>
+
 #include <optional>
 #include <filesystem>
+#include <tl/expected.hpp>
 
 namespace solar2d
 {
     namespace fs = std::filesystem;
+
+    enum class archive_error
+    {
+        bad_file,
+        no_header,
+    };
 
     enum class resource_type
     {
@@ -45,13 +54,13 @@ namespace solar2d
 
       public:
         [[nodiscard]] std::vector<file> files() const;
+        [[nodiscard]] std::vector<char> get_data(const file &file);
         [[nodiscard]] std::optional<file> get(const std::string &name) const;
 
       public:
         void extract(const file &file, const fs::path &dest);
-        [[nodiscard]] std::vector<char> data(const file &file);
 
       public:
-        static std::optional<archive> from(const fs::path &path);
+        static tl::expected<archive, archive_error> from(const fs::path &path);
     };
 } // namespace solar2d

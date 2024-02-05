@@ -57,6 +57,20 @@ namespace solar2d
         return rtn;
     }
 
+    std::vector<char> archive::get_data(const file &file)
+    {
+        m_impl->file.seekg(static_cast<std::streamoff>(file.offset));
+
+        auto tag = m_impl->read<enum tag>();
+
+        if (tag != tag::data)
+        {
+            return {};
+        }
+
+        return m_impl->read<std::vector<char>>();
+    }
+
     std::optional<file> archive::get(const std::string &name) const
     {
         auto files = this->files();
@@ -82,34 +96,20 @@ namespace solar2d
         auto output_path = folder ? dest / file.name : dest;
         std::ofstream output(output_path, std::ios::out | std::ios::binary);
 
-        auto buf = data(file);
+        auto content = get_data(file);
 
-        output.write(buf.data(), static_cast<std::streamsize>(buf.size()));
+        output.write(content.data(), static_cast<std::streamsize>(content.size()));
         output.close();
 
-        logger::get()->debug("Extracted '{}' to '{}'", file.name, output_path.string());
+        logger::get()->debug("extracted '{}' to '{}'", file.name, output_path.string());
     }
 
-    std::vector<char> archive::data(const file &file)
-    {
-        m_impl->file.seekg(static_cast<std::streamoff>(file.offset));
-
-        auto tag = m_impl->read<enum tag>();
-
-        if (tag != tag::data)
-        {
-            return {};
-        }
-
-        return m_impl->read<std::vector<char>>();
-    }
-
-    std::optional<archive> archive::from(const fs::path &path)
+    tl::expected<archive, archive_error> archive::from(const fs::path &path)
     {
         if (!fs::exists(path) || !fs::is_regular_file(path))
         {
             logger::get()->error("'{}' does not exist or is not a file", path.string());
-            return std::nullopt;
+            return tl::make_unexpected(archive_error::bad_file);
         }
 
         static constexpr std::uint8_t header[] = {'r', 'a', 'c', impl::version};
@@ -124,7 +124,7 @@ namespace solar2d
         if (memcmp(buf, header, header_size) != 0)
         {
             logger::get()->error("'{}' is missing car header", path.string());
-            return std::nullopt;
+            return tl::make_unexpected(archive_error::no_header);
         }
 
         archive rtn;
