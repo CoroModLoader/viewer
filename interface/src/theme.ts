@@ -1,9 +1,5 @@
-import { MantineThemeOverride } from "@mantine/core";
+import { createTheme } from "@mantine/core";
 
-const theme: MantineThemeOverride = {
-    loader      : "bars",
-    focusRing   : "never",
-    primaryColor: "orange",
-};
-
-export default theme;
+export const theme = createTheme({
+    /* Put your mantine theme override here */
+});

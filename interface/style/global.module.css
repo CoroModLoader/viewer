@@ -1,0 +1,11 @@
+.accentBackground {
+    @mixin light {
+        background: var(--mantine-color-gray-2);
+    }
+
+    @mixin dark {
+        background: #292929;
+    }
+
+    border-radius: 10px;
+}
