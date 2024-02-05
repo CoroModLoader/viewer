@@ -1,12 +1,21 @@
 #pragma once
+
 #include <string>
 #include <memory>
-#include <optional>
+
 #include <filesystem>
+#include <tl/expected.hpp>
 
 namespace viewer
 {
     namespace fs = std::filesystem;
+
+    enum class decompile_error
+    {
+        start,
+        read,
+        unknown,
+    };
 
     class unluac
     {
@@ -15,24 +24,17 @@ namespace viewer
       private:
         std::unique_ptr<impl> m_impl;
 
-      private:
-        unluac();
-
       public:
         ~unluac();
 
       public:
-        [[nodiscard]] std::string java_path() const;
-        [[nodiscard]] std::string unluac_path() const;
+        unluac(unluac &&) noexcept;
+        unluac(std::string java = "java", std::string unluac = "unluac.jar");
 
       public:
-        void set_java_path(std::string);
-        void set_unluac_path(std::string);
+        unluac &operator=(unluac &&) noexcept;
 
       public:
-        [[nodiscard]] std::optional<std::string> decompile(const fs::path &) const;
-
-      public:
-        static unluac &get();
+        [[nodiscard]] tl::expected<std::string, decompile_error> decompile(const fs::path &) const;
     };
 } // namespace viewer

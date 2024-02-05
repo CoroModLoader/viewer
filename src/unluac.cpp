@@ -1,11 +1,6 @@
 #include "unluac.hpp"
 #include "logger.hpp"
 
-#include <fstream>
-#include <filesystem>
-
-#include <fmt/core.h>
-#include <nlohmann/json.hpp>
 #include <reproc++/drain.hpp>
 #include <reproc++/reproc.hpp>
 
@@ -13,118 +8,41 @@ namespace viewer
 {
     struct unluac::impl
     {
-        std::string java_path;
-        std::string unluac_path;
-
-      public:
-        void save() const;
-        static fs::path config_path();
+        std::string java;
+        std::string unluac;
     };
-
-    void unluac::impl::save() const
-    {
-        auto path = config_path();
-
-        if (!fs::exists(path))
-        {
-            fs::create_directories(path.parent_path());
-        }
-
-        std::ofstream file{path};
-
-        nlohmann::json config;
-
-        config["java_path"] = java_path;
-        config["unluac_path"] = unluac_path;
-
-        file << config.dump();
-    }
-
-    fs::path unluac::impl::config_path()
-    {
-        // NOLINTNEXTLINE(concurrency-mt-unsafe)
-        auto *home = std::getenv("HOME");
-
-        if (home)
-        {
-            return fs::path(home) / ".config" / "solar2d-viewer" / "config.json";
-        }
-
-        // NOLINTNEXTLINE(concurrency-mt-unsafe)
-        home = std::getenv("APPDATA");
-
-        if (home)
-        {
-            return fs::path(home) / "solar2d-viewer" / "config.json";
-        }
-
-        logger::get()->warn("can't determine directory to place config file");
-
-        return fs::current_path() / "config.json";
-    }
-
-    unluac::unluac() : m_impl(std::make_unique<impl>())
-    {
-        auto config = impl::config_path();
-
-        logger::get()->info("config path: {}", config.string());
-
-        m_impl->java_path = "java";
-        m_impl->unluac_path = (fs::current_path() / "unluac.jar").string();
-
-        if (!fs::exists(config) || !fs::is_regular_file(config))
-        {
-            return;
-        }
-
-        std::fstream file{config};
-        auto parsed = nlohmann::json::parse(file, nullptr, false);
-
-        if (parsed.is_discarded())
-        {
-            logger::get()->error("failed to read config");
-            return;
-        }
-
-        m_impl->java_path = parsed["java_path"];
-        m_impl->unluac_path = parsed["unluac_path"];
-    }
 
     unluac::~unluac() = default;
 
-    std::string unluac::java_path() const
+    unluac::unluac(unluac &&other) noexcept : m_impl(std::move(other.m_impl)) {}
+
+    unluac::unluac(std::string java, std::string unluac) : m_impl(std::make_unique<impl>())
     {
-        return m_impl->java_path;
+        m_impl->java = std::move(java);
+        m_impl->unluac = std::move(unluac);
     }
 
-    std::string unluac::unluac_path() const
+    unluac &unluac::operator=(unluac &&other) noexcept
     {
-        return m_impl->unluac_path;
+        if (this != &other)
+        {
+            m_impl = std::move(other.m_impl);
+        }
+
+        return *this;
     }
 
-    void unluac::set_java_path(std::string path)
-    {
-        m_impl->java_path = std::move(path);
-        m_impl->save();
-    }
-
-    void unluac::set_unluac_path(std::string path)
-    {
-        m_impl->unluac_path = std::move(path);
-        m_impl->save();
-    }
-
-    std::optional<std::string> unluac::decompile(const fs::path &file) const
+    tl::expected<std::string, decompile_error> unluac::decompile(const fs::path &file) const
     {
         reproc::process proc;
 
-        std::vector<std::string> arguments{m_impl->java_path, "-jar", m_impl->unluac_path, file.string()};
+        std::vector<std::string> arguments{m_impl->java, "-jar", m_impl->unluac, file.string()};
         auto error = proc.start(arguments);
 
         if (error)
         {
             logger::get()->error("failed to start unluac: {} ({})", error.message(), error.value());
-            return std::nullopt;
+            return tl::make_unexpected(decompile_error::start);
         }
 
         std::string rtn;
@@ -134,8 +52,8 @@ namespace viewer
 
         if (error)
         {
-            logger::get()->error("failed to drain unluac: {} ({})", error.message(), error.value());
-            return std::nullopt;
+            logger::get()->error("failed to read output: {} ({})", error.message(), error.value());
+            return tl::make_unexpected(decompile_error::read);
         }
 
         int status{0};
@@ -143,22 +61,10 @@ namespace viewer
 
         if (status != 0)
         {
-            logger::get()->error("failed to decompile: {} ({}) [{}]", error.message(), error.value(), status);
-            return std::nullopt;
+            logger::get()->error("unluac failed: {} ({}) [{}]", error.message(), error.value(), status);
+            return tl::make_unexpected(decompile_error::unknown);
         }
 
         return rtn;
-    }
-
-    unluac &unluac::get()
-    {
-        static std::unique_ptr<unluac> instance;
-
-        if (!instance)
-        {
-            instance = std::unique_ptr<unluac>(new unluac);
-        }
-
-        return *instance;
     }
 } // namespace viewer
