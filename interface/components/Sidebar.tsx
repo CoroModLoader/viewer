@@ -1,8 +1,9 @@
-import { ActionIcon, Center, CloseButton, Group, NavLink, RingProgress, ScrollArea, Stack, TextInput, Tooltip, TransitionProps, rem } from "@mantine/core";
+import { ActionIcon, Center, CloseButton, Group, Loader, NavLink, RingProgress, ScrollArea, Stack, TextInput, Tooltip, TransitionProps, rem } from "@mantine/core";
 import { useDebouncedValue } from "@mantine/hooks";
 import { IconFileImport, IconFolderCode, IconSearch, IconSettings } from "@tabler/icons-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Virtuoso } from "react-virtuoso";
+import { chooseFile, chooseFolder } from "../src/utils";
 import classes from "../style/global.module.css";
 
 export function Sidebar({ openSettings, setCode }: {openSettings: () => void, setCode: (code: string) => void})
@@ -10,6 +11,28 @@ export function Sidebar({ openSettings, setCode }: {openSettings: () => void, se
     const transition: Partial<TransitionProps> = { transition: "pop" };
 
     const [data, setData] = useState<string[]>([]);
+    const [dataLoading, setDataLoading] = useState(false);
+
+    const importArchive = () =>
+    {
+        setDataLoading(true);
+
+        chooseFile(result =>
+        {
+            window.saucer.call("load", [result]).then(data =>
+            {
+                setDataLoading(false);
+
+                if (typeof data === "boolean")
+                {
+                    window.saucer.call("list", []).then(setData);
+                    return;
+                }
+
+                // TODO: Error handling
+            });
+        }, () => setDataLoading(false));
+    };
 
     useEffect(() =>
     {
@@ -19,12 +42,12 @@ export function Sidebar({ openSettings, setCode }: {openSettings: () => void, se
     const [selected, setSelected] = useState("");
 
     const [progress, setProgress] = useState(-1);
-    const loading = progress >= 0;
+    const exportLoading = progress >= 0;
 
     const startExport = () =>
     {
         window.exportProgress = (current, max) => setProgress((current / max) * 100);
-        window.saucer.call("export", []).then();
+        chooseFolder(path => window.saucer.call("export", [path])); // TODO: Handle export return value
     };
 
     const [query, setQuery] = useState("");
@@ -74,12 +97,17 @@ export function Sidebar({ openSettings, setCode }: {openSettings: () => void, se
                         window.saucer.call("decompile", [item]).then(setCode);
                     };
 
-                    return <NavLink
-                        key={item}
+                    return <Tooltip
                         label={item}
-                        onClick={update}
-                        active={selected === item}
-                    />;
+                        openDelay={200}
+                    >
+                        <NavLink
+                            key={item}
+                            label={item}
+                            onClick={update}
+                            active={selected === item}
+                        />
+                    </Tooltip>;
                 }}
             />
         </ScrollArea>
@@ -91,13 +119,17 @@ export function Sidebar({ openSettings, setCode }: {openSettings: () => void, se
             justify="space-evenly"
         >
             <Tooltip label="Load Resource" transitionProps={transition}>
-                <ActionIcon variant="light" radius="xl" size="xl">
-                    <IconFileImport />
-                </ActionIcon>
+                {dataLoading ?
+                    <Loader size={43} type="dots" />
+                    :
+                    <ActionIcon onClick={importArchive} variant="light" radius="xl" size="xl">
+                        <IconFileImport />
+                    </ActionIcon>
+                }
             </Tooltip>
 
-            <Tooltip label="Export Archive" transitionProps={transition}>
-                {loading ?
+            <Tooltip label={exportLoading ? `Exporting Archive (${progress.toPrecision(2)}%)` : "Export Archive"} transitionProps={transition}>
+                {exportLoading ?
                     <RingProgress
                         size={45}
                         thickness={5}
@@ -108,7 +140,7 @@ export function Sidebar({ openSettings, setCode }: {openSettings: () => void, se
                                 <CloseButton
                                     size="xs"
                                     variant="transparent"
-                                    onClick={() => setProgress(-1)}
+                                    onClick={() => window.saucer.call("cancel", [])}
                                 />
                             </Center>
                         }
