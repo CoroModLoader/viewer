@@ -18,13 +18,13 @@ export function Main()
         />
         <Grid
             gutter={0}
-            columns={4}
+            columns={5}
         >
             <Grid.Col span={3} h="100vh">
                 <Code code={code} />
             </Grid.Col>
 
-            <Grid.Col span={1} h="100vh">
+            <Grid.Col span={2} h="100vh">
                 <Sidebar openSettings={open} setCode={setCode} />
             </Grid.Col>
         </Grid>
