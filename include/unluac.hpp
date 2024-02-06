@@ -3,6 +3,7 @@
 #include <string>
 #include <memory>
 
+#include <optional>
 #include <filesystem>
 #include <tl/expected.hpp>
 
@@ -10,11 +11,17 @@ namespace viewer
 {
     namespace fs = std::filesystem;
 
-    enum class decompile_error
+    enum class decomp_error_type
     {
         start,
         read,
         unknown,
+    };
+
+    struct decomp_error
+    {
+        std::string message;
+        decomp_error_type type;
     };
 
     class unluac
@@ -28,13 +35,9 @@ namespace viewer
         ~unluac();
 
       public:
-        unluac(unluac &&) noexcept;
-        unluac(std::string java = "java", std::string unluac = "unluac.jar");
+        unluac(const std::optional<std::string> &java, const std::optional<std::string> &unluac);
 
       public:
-        unluac &operator=(unluac &&) noexcept;
-
-      public:
-        [[nodiscard]] tl::expected<std::string, decompile_error> decompile(const fs::path &) const;
+        [[nodiscard]] tl::expected<std::string, decomp_error> decompile(const fs::path &) const;
     };
 } // namespace viewer
