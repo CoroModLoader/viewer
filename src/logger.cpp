@@ -7,16 +7,24 @@ namespace viewer
 {
     struct logger::impl
     {
-        std::shared_ptr<spdlog::logger> logger;
+        std::unique_ptr<spdlog::logger> logger;
     };
 
     logger::logger() : m_impl(std::make_unique<impl>())
     {
-        auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("viewer.log");
-        auto color_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+        namespace sinks = spdlog::sinks;
 
-        m_impl->logger = std::make_shared<spdlog::logger>("viewer", spdlog::sinks_init_list{file_sink, color_sink});
-        m_impl->logger->should_log(spdlog::level::trace);
+        auto stdout_sink = std::make_shared<sinks::ansicolor_stdout_sink_mt>();
+        stdout_sink->set_level(spdlog::level::debug);
+
+        auto file_sink = std::make_shared<sinks::basic_file_sink_mt>("coroviewer.log");
+        file_sink->set_level(spdlog::level::trace);
+
+        auto init      = spdlog::sinks_init_list{stdout_sink, file_sink};
+        m_impl->logger = std::make_unique<spdlog::logger>("coroviewer", init);
+
+        m_impl->logger->set_level(spdlog::level::trace);
+        m_impl->logger->flush_on(spdlog::level::trace);
     }
 
     logger::~logger() = default;
