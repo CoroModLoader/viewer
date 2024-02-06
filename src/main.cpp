@@ -1,204 +1,159 @@
-#include "logger.hpp"
-#include "unluac.hpp"
-#include "archive.hpp"
-
-#include <map>
-#include <fstream>
-#include <filesystem>
-
 #include <nfd.hpp>
+#include <fmt/format.h>
+
+#include <embedded/all.hpp>
 #include <saucer/smartview.hpp>
 #include <saucer/utils/future.hpp>
 
-#include "embedding/all.hpp"
-
-namespace fs = std::filesystem;
-
-namespace nlohmann
-{
-    template <typename T>
-    struct adl_serializer<std::optional<T>>
-    {
-        static void to_json(json &json, const std::optional<T> &value)
-        {
-            if (!value)
-            {
-                json = nullptr;
-                return;
-            }
-
-            json = value.value();
-        }
-
-        static void from_json(const json &j, std::optional<T> &value)
-        {
-            if (j.is_null())
-            {
-                return;
-            }
-
-            value.emplace(j);
-        }
-    };
-} // namespace nlohmann
+#include "config.hpp"
+#include "constants.hpp"
+#include "controller.hpp"
 
 int main()
 {
-    using viewer::logger;
-    using viewer::unluac;
+    saucer::smartview saucer;
+
+    saucer.set_title(fmt::format("CoroViewer | v{}", viewer::version));
+    saucer.set_min_size(900, 600);
+
+    viewer::controller ctrl{};
+
+    saucer.expose("decompile", [&ctrl](const std::string &name) { return ctrl.decompile(name); });
+    saucer.expose("list", [&ctrl]() { return ctrl.list(); });
+
+    saucer.expose("load",
+                  [&ctrl](const std::string &path) -> std::variant<bool, std::string>
+                  {
+                      auto rtn = ctrl.load(path);
+
+                      if (!rtn.has_value())
+                      {
+                          return rtn.error();
+                      }
+
+                      return true;
+                  });
+
+    std::atomic_size_t counter{0};
+    std::optional<std::stop_source> token;
+    std::optional<std::jthread> watcher_thread;
+
+    auto watcher = [&saucer, &counter, &ctrl](auto token)
+    {
+        const auto total = ctrl.list().size();
+
+        while (!token.stop_requested())
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(750));
+
+            const auto current = counter.load();
+
+            if (current >= total)
+            {
+                break;
+            }
+
+            saucer.evaluate<void>("window.exportProgress({}, {})", current, total) | saucer::forget();
+        }
+
+        saucer.evaluate<void>("window.exportProgress({}, {})", -1, total) | saucer::forget();
+    };
+
+    saucer.expose("export",
+                  [&ctrl, &counter, &token, &watcher, &watcher_thread](const std::string &path)
+                  {
+                      if (token)
+                      {
+                          token->request_stop();
+                      }
+
+                      counter  = 0;
+                      auto rtn = ctrl.export_archive(path, counter);
+
+                      if (!rtn.has_value())
+                      {
+                          return false;
+                      }
+
+                      token.emplace(std::move(rtn.value()));
+                      watcher_thread.emplace(watcher, token.value());
+
+                      return true;
+                  });
+
+    saucer.expose("cancel",
+                  [&token]()
+                  {
+                      if (!token)
+                      {
+                          return;
+                      }
+
+                      token->request_stop();
+                      token.reset();
+                  });
+
+    static auto &config = viewer::config::load();
+
+    saucer.expose("unluac-path", [] { return config.unluac_path; });
+    saucer.expose("java-path", [] { return config.java_path; });
+
+    saucer.expose("set-unluac-path",
+                  [](std::optional<std::string> path)
+                  {
+                      config.unluac_path = std::move(path);
+                      config.save();
+                  });
+
+    saucer.expose("set-java-path",
+                  [](std::optional<std::string> path)
+                  {
+                      config.java_path = std::move(path);
+                      config.save();
+                  });
 
     NFD_Init();
-    saucer::smartview saucer({.persistent_cookies = true, .hardware_acceleration = true});
 
-    saucer.set_title("Solar2D Viewer");
-    saucer.set_min_size(800, 600);
+    saucer.expose("choose-path",
+                  [](std::optional<std::string> origin) -> std::optional<std::string>
+                  {
+                      NFD::UniquePath path;
+                      auto result = NFD::OpenDialog(path, nullptr, 0, origin.has_value() ? origin->c_str() : nullptr);
 
-    std::optional<solar2d::archive> archive;
-    std::map<std::string, std::string> cache;
+                      if (result != NFD_OKAY)
+                      {
+                          return std::nullopt;
+                      }
 
-    saucer.expose("open-archive", [&]() {
-        NFD::UniquePath path;
-        nfdfilteritem_t filters[1] = {{"Car Archive", "car"}};
-        auto result = NFD::OpenDialog(path, filters, 1);
+                      return path.get();
+                  });
 
-        if (result != NFD_OKAY)
-        {
-            return false;
-        }
+    saucer.expose("choose-folder",
+                  [](std::optional<std::string> origin) -> std::optional<std::string>
+                  {
+                      NFD::UniquePath path;
+                      auto rtn = NFD::PickFolder(path, origin.has_value() ? origin->c_str() : nullptr);
 
-        auto rtn = solar2d::archive::from(path.get());
+                      if (rtn != NFD_OKAY)
+                      {
+                          return std::nullopt;
+                      }
 
-        if (!rtn)
-        {
-            return false;
-        }
+                      return path.get();
+                  });
 
-        archive.emplace(std::move(*rtn));
-
-        return true;
-    });
-
-    saucer.expose("list-files", [&]() {
-        std::vector<std::string> rtn;
-
-        for (const auto &file : archive->files())
-        {
-            rtn.emplace_back(file.name);
-        }
-
-        return rtn;
-    });
-
-    saucer.expose("decompile", [&](const std::string &file) -> std::optional<std::string> {
-        if (cache.contains(file))
-        {
-            return cache.at(file);
-        }
-
-        auto temp = fs::temp_directory_path() / "solar2d-dec.lua";
-        auto target = archive->get(file);
-
-        if (!target)
-        {
-            logger::get()->error("could not find requested file \"{}\"", file);
-            return std::nullopt;
-        }
-
-        archive->extract(target.value(), temp);
-        auto rtn = unluac::get().decompile(temp);
-
-        if (!rtn)
-        {
-            return std::nullopt;
-        }
-
-        cache.emplace(file, rtn.value());
-
-        return rtn.value();
-    });
-
-    saucer.expose("java-path", []() { return unluac::get().java_path(); });
-    saucer.expose("update-java-path", []() -> std::string {
-        NFD::UniquePath path;
-        auto result = NFD::OpenDialog(path);
-
-        if (result != NFD_OKAY)
-        {
-            return unluac::get().java_path();
-        }
-
-        unluac::get().set_java_path(path.get());
-
-        return path.get();
-    });
-
-    saucer.expose("unluac-path", []() { return unluac::get().unluac_path(); });
-    saucer.expose("update-unluac-path", []() -> std::string {
-        NFD::UniquePath path;
-        nfdfilteritem_t filters[1] = {{"Jar File", "jar"}};
-        auto result = NFD::OpenDialog(path, filters, 1);
-
-        if (result != NFD_OKAY)
-        {
-            return unluac::get().java_path();
-        }
-
-        unluac::get().set_unluac_path(path.get());
-        return path.get();
-    });
-
-    saucer.expose(
-        "export-all",
-        [&]() {
-            NFD::UniquePath path;
-            auto result = NFD::PickFolder(path);
-
-            if (result != NFD_OKAY)
-            {
-                return;
-            }
-
-            auto temp = fs::temp_directory_path() / "solar2d-export";
-            auto copy = archive.value();
-
-            auto files = copy.files();
-
-            for (const auto &file : files)
-            {
-                copy.extract(file, temp);
-            }
-
-            auto out_dir = fs::path(path.get());
-            auto &unluac = unluac::get();
-            auto extracted = 0u;
-
-            for (const auto &file : files)
-            {
-                if (extracted % 10 == 0 || extracted == files.size())
-                {
-                    saucer::forget(saucer.evaluate<void>("window.update_notification({})",
-                                                         saucer::make_args(extracted, files.size())));
-                }
-
-                auto lua = unluac.decompile(temp / file.name);
-
-                if (!lua)
-                {
-                    continue;
-                }
-
-                std::ofstream out{out_dir / (file.name + ".lua"), std::ios::out};
-                out << lua.value();
-                extracted++;
-            }
-        },
-        true);
-
-    saucer.embed(embedded::get_all_files());
     saucer.set_context_menu(false);
+
+    saucer.embed(saucer::embedded::all());
     saucer.serve("index.html");
+
     saucer.show();
     saucer.run();
+
+    if (token)
+    {
+        token->request_stop();
+    }
 
     return 0;
 }
