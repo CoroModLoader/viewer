@@ -20,11 +20,12 @@ namespace solar2d
     archive::archive(const archive &other) : m_impl(std::make_unique<impl>())
     {
         m_impl->file = std::ifstream{other.m_impl->location, std::ios::binary};
+
         m_impl->file.unsetf(std::ios::skipws);
         m_impl->file.seekg(other.m_impl->start);
 
+        m_impl->start    = other.m_impl->start;
         m_impl->location = other.m_impl->location;
-        m_impl->start = other.m_impl->start;
     }
 
     std::vector<file> archive::files() const
@@ -47,9 +48,9 @@ namespace solar2d
         {
             file entry;
 
-            entry.type = static_cast<resource_type>(m_impl->read());
+            entry.type   = static_cast<resource_type>(m_impl->read());
             entry.offset = m_impl->read();
-            entry.name = m_impl->read<std::string>();
+            entry.name   = m_impl->read<std::string>();
 
             rtn.emplace_back(entry);
         }
@@ -74,7 +75,7 @@ namespace solar2d
     std::optional<file> archive::get(const std::string &name) const
     {
         auto files = this->files();
-        auto it = std::ranges::find_if(files, [&](auto &x) { return x.name == name; });
+        auto it    = std::ranges::find_if(files, [&](auto &x) { return x.name == name; });
 
         if (it == files.end())
         {
@@ -101,7 +102,7 @@ namespace solar2d
         output.write(content.data(), static_cast<std::streamsize>(content.size()));
         output.close();
 
-        logger::get()->debug("extracted '{}' to '{}'", file.name, output_path.string());
+        logger::get()->trace("extracted '{}' to '{}'", file.name, output_path.string());
     }
 
     tl::expected<archive, archive_error> archive::from(const fs::path &path)
@@ -113,9 +114,9 @@ namespace solar2d
         }
 
         static constexpr std::uint8_t header[] = {'r', 'a', 'c', impl::version};
-        static constexpr auto header_size = sizeof(header);
+        static constexpr auto header_size      = sizeof(header);
 
-        std::ifstream file{path, std::ios::binary};
+        std::ifstream file{path, std::ios::in | std::ios::binary};
         file.unsetf(std::ios::skipws);
 
         char buf[header_size];
@@ -130,8 +131,8 @@ namespace solar2d
         archive rtn;
 
         rtn.m_impl->location = path;
-        rtn.m_impl->start = file.tellg();
-        rtn.m_impl->file = std::move(file);
+        rtn.m_impl->start    = file.tellg();
+        rtn.m_impl->file     = std::move(file);
 
         return rtn;
     }
